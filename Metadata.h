@@ -19,6 +19,19 @@ public:
 		this->_data = DEFAULT_MEM_SIZE;
 		this->_address = (-1);//FIXME change value
 	}
+//	Metadata(const Metadata& block) {
+//		_data = block.Data();
+//		_address = block.Address();
+//	}
+	bool operator==(const Metadata& block) {
+		return (this->_address == block._address);
+	}
+	const int Data() {
+		return this->_data;
+	}
+	const int Address() {
+		return this->_address;
+	}
 };
 
 

@@ -11,22 +11,23 @@
 #define DATA_GARBAGE (-1)
 #define STORE_COM 1
 #define LOAD_COM 0
+#define HIT 1
+#define MISS 0
 
 class Instruction {
-private:
+public:
 	int _inst_id; // 0-load, 1-store
 	int _addr;	// load / store address
 	int _data; // store data / garbage on load
-public:
 	Instruction(int inst_id, int address, int data = DATA_GARBAGE) {
 		this->_inst_id = inst_id;
 		this->_addr = address;
 		this->_data = data;
 	}
 
-	int& ID();//returns ID
-	int& address();//returns Address
-	int& data();//returns data
+	const int ID();//returns ID
+	const int Address();//returns Address
+	const int Data();//returns data
 
 };
 
