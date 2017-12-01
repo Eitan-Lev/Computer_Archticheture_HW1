@@ -9,6 +9,8 @@
 #define INSTRUCTION_H_
 
 #define DATA_GARBAGE (-1)
+#define STORE_COM 1
+#define LOAD_COM 0
 
 class Instruction {
 private:
