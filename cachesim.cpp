@@ -15,6 +15,9 @@
 #include "Metadata.h"
 #include "Cache.h"
 
+#define ERROR_VALUE (-1)
+#define PRECISION_REQUIREMENT 2
+
 using namespace std;
 
 char line[80];
@@ -86,7 +89,7 @@ Instruction split_inst(char* line)
 		switch (token_id) {
 			case 0: inst._inst_id = (!strcmp(tokens,"store")); // 1 if store, else 0
 					break;
-			case 1: inst._addr = HexToDecimal(tokens); // store addr//FIXME
+			case 1: inst._addr = HexToDecimal(tokens); // store addr
 					break;
 			case 2: inst._data = HexToDecimal(tokens); // store data
 					break;
@@ -111,6 +114,23 @@ void Initialize_Memory(int size, int init_value) {
 	for (int i = 0; i < size; i++) {
 		MemArray[i]._address = i;
 		MemArray[i]._data = init_value;
+	}
+}
+
+/*
+ * Check that all parameters are legal.
+ */
+bool ParametersIllegal() {
+	if (inst_filename == NULL || mem_size <= 0 || mem_size % 2 != 0 ||
+			cache_size <= 0 || cache_size % 2 != 0 ||
+			block_size <= 0 || block_size*associtivity > cache_size ||
+			block_size*associtivity > mem_size ||
+			associtivity <= 0 ||
+			((eviction_policy != EVICTION_POLICY_LRU) && (eviction_policy != EVICTION_POLICY_RANDOM)) ||
+			((init_policy != INIT_FF) && (eviction_policy != INIT_RANDOM))) {
+		return true;
+	} else {
+		return false;
 	}
 }
 
@@ -139,23 +159,24 @@ int main(int argc, char* argv[])
 			/* everything else you need to add here */
 		}
 	}
-	////////////////////////
-	//Our Code:
-	 stringstream ss;
+	//Validate paramaters:
+	if (ParametersIllegal() == true) {
+		perror ("Illegal parameters");
+		return ERROR_VALUE;
+	}
+	stringstream ss;
 	srand(time(NULL));
 	Initialize_Memory(mem_size, init_policy);
 	Instruction inst(DATA_GARBAGE, DATA_GARBAGE, DATA_GARBAGE);
 	Cache cache(cache_size, block_size, associtivity, eviction_policy, init_policy);
-	////////////////////////
 	fr = fopen (inst_filename, "rt");  /* open the file for reading */
-	std::ofstream instructionFile("C:\\Users\\Eitan Levin\\Documents\\inst.log");
-	std::ofstream statsFile("C:\\Users\\Eitan Levin\\Documents\\stat.log");
-	//TODO change later
+	std::ofstream instructionFile("C:\\Users\\Eitan Levin\\Documents\\inst.log");//TODO change later- correct paths
+	std::ofstream statsFile("C:\\Users\\Eitan Levin\\Documents\\stat.log");//TODO change later- correct paths
 
-	if (fr == NULL) {//FIXME
-			perror ("Error opening file");
-			return -1;//FIXME remove
-		}
+	if (fr == NULL) {//validate the file was open
+		perror ("Error opening file");
+		return ERROR_VALUE;
+	}
 	double commandIndex = 0;
 	double loadHitTimes = 0;
 	double loadMissTimes = 0;
@@ -175,7 +196,7 @@ int main(int argc, char* argv[])
 		CommandLine += line;
 		/* split tokens, put back into inst */
 		inst = split_inst(line);
-		cout << "seperated tokens; inst_id: " << inst.ID() << ", inst_addr: " << inst.Address() << ", inst_data: " << inst.Data() << endl;
+//		cout << "seperated tokens; inst_id: " << inst.ID() << ", inst_addr: " << inst.Address() << ", inst_data: " << inst.Data() << endl;
 		if (inst.ID() == STORE_COM) {
 			 bool storeRes = cache.StoreInstruction(inst);
 			 CommandResult += "store ";
@@ -201,12 +222,9 @@ int main(int argc, char* argv[])
 			 ss << hex << loadRes.LoadData();
 			 string data ( ss.str() );
 			 ss.str("");
-			 //string data = std::to_string(loadRes.LoadData());
-//			 string data = DecimalToHex(loadRes.LoadData());
 			 data = ToUpperCase(data);
 			 CommandResult += data;
 			 CommandResult += "\n";
-			 //delete[] data;
 		}
 		 /* now you  should have the instruction decoded in "inst" */
 		 // try to remove the next remarks and see that it works
@@ -217,24 +235,31 @@ int main(int argc, char* argv[])
 		instructionFile << CommandResult;
 		 commandIndex++;
 	 }
-	//cache.PrintAllCache();
-	string IC = "Instruction Count: " + IntToString(commandIndex);
-	string lHits = "\nLoad Hits: " + IntToString(loadHitTimes);
-	string lMiss = "\nLoad Misses: " + IntToString(loadMissTimes);
-	string sHits = "\nStore Hits: " + IntToString(storeHitTimes);
-	string sMiss = "\nStore Misses: " + IntToString(storeMissTimes);
-	string lMissRate = "\nLoad Miss Rate: " + IntToString(loadMissTimes*100/(loadMissTimes + loadHitTimes)) + "%";
-	string sMissRate = "\nStore Miss Rate: " + IntToString(storeMissTimes*100/(storeMissTimes + storeHitTimes)) + "%";
-	string totalMissRate = "\nTotal Miss Rate: " + IntToString(((loadMissTimes + storeMissTimes)*100)/(commandIndex)) + "%\n";
-	statsFile << IC;
-	statsFile << lHits;
-	statsFile << lMiss;
-	statsFile << sHits;
-	statsFile << sMiss;
-	statsFile << lMissRate;
-	statsFile << sMissRate;
-	statsFile << totalMissRate;
-//	delete[] MemArray;//TODO check if we need to delete
+	stringstream IC;
+	stringstream lHits;
+	stringstream lMiss;
+	stringstream sHits;
+	stringstream sMiss;
+	stringstream lMissRate;
+	stringstream sMissRate;
+	stringstream totalMissRate;
+	IC << "Instruction Count: " << commandIndex;
+	lHits << "Load Hits: " << (loadHitTimes);
+	lMiss << "Load Misses: " << (loadMissTimes);
+	sHits << "Store Hits: " << (storeHitTimes);
+	sMiss << "Store Misses: " << (storeMissTimes);
+	lMissRate << "Load Miss Rate: " << fixed << setprecision(PRECISION_REQUIREMENT) << (loadMissTimes*100/(loadMissTimes + loadHitTimes)) << "%";
+	sMissRate << "Store Miss Rate: " << fixed << setprecision(PRECISION_REQUIREMENT) << (storeMissTimes*100/(storeMissTimes + storeHitTimes)) << "%";
+	totalMissRate << "Total Miss Rate: " << fixed << setprecision(PRECISION_REQUIREMENT) << (((loadMissTimes + storeMissTimes)*100)/(commandIndex)) << "%";
+	statsFile << IC.rdbuf() << endl;
+	statsFile << lHits.rdbuf() << endl;
+	statsFile << lMiss.rdbuf() << endl;
+	statsFile << sHits.rdbuf() << endl;
+	statsFile << sMiss.rdbuf() << endl;
+	statsFile << lMissRate.rdbuf() << endl;
+	statsFile << sMissRate.rdbuf() << endl;
+	statsFile << totalMissRate.rdbuf() << endl;
+	delete[] MemArray;//TODO check if we need to delete
 	delete index;
 	statsFile.close();
 	instructionFile.close();

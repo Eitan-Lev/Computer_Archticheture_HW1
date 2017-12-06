@@ -10,19 +10,15 @@
 
 #define DEFAULT_MEM_SIZE 1024
 
-//TODO if Metadata only contains data, remove it
 class Metadata {
 public:
 	int _data;
 	int _address;
 	Metadata() {
 		this->_data = DEFAULT_MEM_SIZE;
-		this->_address = (-1);//FIXME change value
+		this->_address = (-1);//A random value, no meaning
 	}
-//	Metadata(const Metadata& block) {
-//		_data = block.Data();
-//		_address = block.Address();
-//	}
+
 	bool operator==(const Metadata& block) {
 		return (this->_address == block._address);
 	}

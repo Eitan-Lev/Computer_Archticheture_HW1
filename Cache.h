@@ -69,105 +69,46 @@ public:
 		_sets_number = cache_size/(associativity*block_size);
 		this->SetArrays = new list<Metadata>[_sets_number];
 	}
-	bool StoreInstruction(Instruction inst) {
-		int set_number = (inst.Address()) % (this->_sets_number);//which list
-		list<Metadata>::iterator it;
-		Metadata newInst;
-		newInst._data = inst.Data();
-		newInst._address = inst.Address();
-		MemArray[newInst.Address()] = newInst;//Always write to memory because of write through
-		//Going over the relevant list and checking if the block exists in it:
-		for (it = SetArrays[set_number].begin(); it != SetArrays[set_number].end(); it++) {
-			if (it->Address() == inst.Address()) {
-				Metadata eitan;
-				eitan._address = it->Address();
-				eitan._data = it->Data();
-				SetArrays[set_number].remove(eitan);//TODO change from eitan
-				SetArrays[set_number].push_front(newInst);
-				return HIT;
-			}
-		}
-		//If reached here, this address did not exist in the cache:
-		if (SetArrays[set_number].size() >= this->_k_way_associativity) {
-			if (this->_eviction_policy == EVICTION_POLICY_RANDOM) {
-				RemoveFromMidList(set_number);
-			} else {
-				SetArrays[set_number].pop_back();
-			}
-//			Metadata temp = SetArrays[set_number].back();
-			//TODO check if ok to delete
-//			MemArray[temp._address] = temp;
-//			MemArray[temp._address]._address = temp._address;
-//			MemArray[temp._address]._data = temp._data;
-		}
-		MemArray[newInst._address] = newInst;
-		SetArrays[set_number].push_front(newInst);
-		return MISS;
-	}
 
-	//TODO move to private
-	void RemoveFromMidList(int set_number) {
-		list<Metadata>::iterator iter = SetArrays[set_number].begin();
-		unsigned int rnd = rand() % (this->_k_way_associativity);//A random value between 0 and sets number - 1
-		cout << "rand = " << rnd << endl;
-		if (SetArrays[set_number].size() == rnd + 1) {
-			iter = SetArrays[set_number].end();
-			iter--;
-		} else if (rnd != 0) {
-			for (unsigned int i = 0; i <= rnd; iter++, i++) {
-				if (iter == SetArrays[set_number].end()) {
-					cout << "bad" << endl;
-				}
-			}
-		}
-		SetArrays[set_number].erase(iter);
-	}
+	/*
+	 * For store instruction.
+	 * In case of LRU: 	Updates both the cache, and the memory.
+	 * 					If the block already exists, move it to the top of the list and updates it.
+	 * 					If not, allocate room in the cache for it (on the top).
+	 * In case of Random:	Updates both the cache, and the memory.
+	 * 						If the block already exists, updates it.
+	 * 						If not, allocate room in the cache for it.
+	 */
+	bool StoreInstruction(Instruction inst);
 
-	LoadResult LoadInstruction(Instruction inst) {
-		int set_number = (inst.Address()) % (this->_sets_number);//which set
-		list<Metadata>::iterator it;
-		Metadata CurrInst;
-		CurrInst._address = inst.Address();
-		//Going over the relevant list and checking if the block exists in it:
-		for (it = SetArrays[set_number].begin(); it != SetArrays[set_number].end(); it++) {
-			//If found, move it to the top of the list for lru
-			if (it->_address == inst.Address()) {
-				CurrInst._address = it->Address();
-				CurrInst._data = it->Data();
-				SetArrays[set_number].remove(CurrInst);
-				SetArrays[set_number].push_front(CurrInst);
-				//TODO mention it is a hit
-				LoadResult loadRes(HIT, CurrInst.Data());
-				return loadRes;
-			}
-		}
-		//If reached here, this address did not exist in the cache:
-		if (SetArrays[set_number].size() >= this->_k_way_associativity) {
-			if (this->_eviction_policy == EVICTION_POLICY_RANDOM) {
-				RemoveFromMidList(set_number);
-			} else {
-				SetArrays[set_number].pop_back();
-			}
-		}
-		CurrInst = MemArray[CurrInst.Address()];
-		SetArrays[set_number].push_front(CurrInst);
-		LoadResult loadRes(MISS, CurrInst.Data());
-		return loadRes;
-	}
+	/*
+	 * For load instruction.
+	 * In case of LRU: 	If the block already exists, move it to the top of the list.
+	 * 					If not, allocate room in the cache for it (on the top).
+	 * In case of Random:	If the block already exists- just return the data.
+	 * 						If not, allocate room in the cache for it.
+	 */
+	LoadResult LoadInstruction(Instruction inst);
 
-	void PrintAllCache() {//TODO only internal usage
-		list<Metadata>::iterator it;
-		for (int i = 0; i < this->_sets_number; i++) {
-			if (SetArrays[i].empty() == false) {
-				cout << "Set Number: " << i << endl;
-			}
-			for (it = SetArrays[i].begin(); it != SetArrays[i].end(); it++) {
-				cout << "address is: " << it->_address <<
-						", data is: " << it->_data << endl;
-			}
-		}
-	}
+	/*
+	 * Print the entire cache. For Internal use only!
+	 */
+	void PrintAllCache();
+private:
+
+	/*
+	 * Remove a single block, in case the set is full.
+	 * If LRU:	remove the last element.
+	 * If Random: Remove a random element.
+	 */
+	void RemoveSingleElementIfListFull(int set_number);
+
+	/*
+	 * The function which removes a random block from the set.
+	 */
+	void RemoveFromMidList(int set_number);
 };
+
 
 
 #endif /* CACHE_H_ */
